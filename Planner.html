@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MedRep Weekly Visit Planner</title>
+  <style>
+    :root {
+      --primary: #007aff;
+      --bg: #f2f2f7;
+      --card-bg: #ffffff;
+      --text: #1c1c1e;
+      --subtext: #8e8e93;
+      --border: #e5e5ea;
+      --radius: 12px;
+      
+      /* Status Colors */
+      --status-aware-bg: #fff9e6;
+      --status-aware-color: #b45309;
+      --status-trial-bg: #eff6ff;
+      --status-trial-color: #1d4ed8;
+      --status-user-bg: #f0fdf4;
+      --status-user-color: #15803d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      max-width: 430px; /* iPhone 14 Pro Max width optimization */
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    header {
+      padding: 16px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .day-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+
+    .day-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .day-btn {
+      flex: 0 0 auto;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .day-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    main {
+      flex: 1;
+      padding: 16px;
+      padding-bottom: 100px;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #e5e5ea; color: var(--text); }
+    .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+    .btn-danger { background: #ffe5e5; color: #d32f2f; }
+
+    .doctor-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      position: relative;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .doc-name {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .doc-specialty {
+      font-size: 13px;
+      color: var(--subtext);
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .status-Aware { background: var(--status-aware-bg); color: var(--status-aware-color); }
+    .status-Trial { background: var(--status-trial-bg); color: var(--status-trial-color); }
+    .status-User { background: var(--status-user-bg); color: var(--status-user-color); }
+
+    .card-details {
+      font-size: 13px;
+      display: grid;
+      gap: 4px;
+      color: #3a3a3c;
+      margin-top: 8px;
+    }
+
+    .card-details span {
+      font-weight: 600;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #f2f2f7;
+    }
+
+    .card-action-btn {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--subtext);
+      font-size: 14px;
+    }
+
+    /* Modal Overlay */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: flex-end;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 430px;
+      margin: 0 auto;
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--subtext);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #f9f9f9;
+      font-size: 15px;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #fff;
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .data-transfer {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    #importFile { display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Weekly Planner</h1>
+    <div class="day-tabs" id="dayTabs"></div>
+  </header>
+
+  <main>
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="openDoctorModal()">+ Add Doctor</button>
+      <button class="btn btn-outline" onclick="openExportModal()">Export Text</button>
+    </div>
+
+    <div id="doctorList"></div>
+
+    <div class="data-transfer">
+      <button class="btn btn-secondary" onclick="exportDataJSON()">Backup File</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Restore File</button>
+      <input type="file" id="importFile" accept=".json" onchange="importDataJSON(event)">
+    </div>
+  </main>
+
+  <!-- Autocomplete Product List -->
+  <datalist id="productList">
+    <option value="Tumaddox"></option>
+    <option value="Imuddox Vials"></option>
+    <option value="Maddovit B12 Vials"></option>
+    <option value="Collagen Joints Vials"></option>
+    <option value="Calidox Syrup"></option>
+    <option value="Maddo-Cal Tab"></option>
+    <option value="GinkgoDox Tab"></option>
+    <option value="Ovaddox Sachets"></option>
+    <option value="Menvit Sachets"></option>
+    <option value="Freemove Tab"></option>
+  </datalist>
+
+  <!-- Add/Edit Doctor Modal -->
+  <div class="modal" id="docModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add Doctor</h3>
+        <button class="card-action-btn" onclick="closeDoctorModal()">Cancel</button>
+      </div>
+      <form id="docForm" onsubmit="saveDoctor(event)">
+        <input type="hidden" id="editIndex" value="-1">
+        
+        <div class="form-group">
+          <label>Doctor Name</label>
+          <input type="text" id="docName" class="form-control" required placeholder="e.g. Dr. John Doe">
+        </div>
+
+        <div class="form-group">
+          <label>Specialty</label>
+          <input type="text" id="docSpecialty" class="form-control" placeholder="e.g. Cardiologist">
+        </div>
+
+        <div class="form-group">
+          <label>Clinic Location</label>
+          <input type="text" id="docLocation" class="form-control" placeholder="e.g. Central Medical Center, 2nd Floor">
+        </div>
+
+        <div class="form-group">
+          <label>Visit Time</label>
+          <input type="text" id="docTime" class="form-control" placeholder="e.g. 11:30 AM - 01:00 PM">
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+          <select id="docStatus" class="form-control">
+            <option value="Aware">Aware</option>
+            <option value="Trial">Trial</option>
+            <option value="User">User</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Target Product (Item)</label>
+          <input type="text" id="docItem" class="form-control" list="productList" placeholder="Type or select product...">
+        </div>
+
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="docNotes" class="form-control" placeholder="Add follow-up notes or reminders..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save Visit</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Text Output Modal -->
+  <div class="modal" id="exportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Weekly Plan Text Export</h3>
+        <button class="card-action-btn" onclick="closeExportModal()">Close</button>
+      </div>
+      <div class="form-group">
+        <textarea id="exportArea" class="form-control" style="height: 250px; font-family: monospace; font-size: 13px;" readonly></textarea>
+      </div>
+      <button class="btn btn-primary" style="width: 100%;" onclick="copyExportText()">Copy Text to Clipboard</button>
+    </div>
+  </div>
+
+  <script>
+    const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+    let currentDay = 'Saturday';
+    
+    // Core Data Structure stored in localStorage
+    let plannerData = JSON.parse(localStorage.getItem('medrep_planner')) || {
+      Saturday: [], Sunday: [], Monday: [], Tuesday: [], Wednesday: [], Thursday: []
+    };
+
+    function init() {
+      renderTabs();
+      renderDoctors();
+    }
+
+    function renderTabs() {
+      const tabsContainer = document.getElementById('dayTabs');
+      tabsContainer.innerHTML = days.map(day => `
+        <button class="day-btn ${day === currentDay ? 'active' : ''}" onclick="switchDay('${day}')">
+          ${day.substring(0, 3)}
+        </button>
+      `).join('');
+    }
+
+    function switchDay(day) {
+      currentDay = day;
+      renderTabs();
+      renderDoctors();
+    }
+
+    function renderDoctors() {
+      const listContainer = document.getElementById('doctorList');
+      const docs = plannerData[currentDay] || [];
+
+      if (docs.length === 0) {
+        listContainer.innerHTML = `<div class="empty-state">No doctor visits scheduled for ${currentDay}.<br>Tap "+ Add Doctor" to start.</div>`;
+        return;
+      }
+
+      listContainer.innerHTML = docs.map((doc, index) => `
+        <div class="doctor-card">
+          <div class="card-header">
+            <div>
+              <div class="doc-name">${escapeHtml(doc.name)}</div>
+              <div class="doc-specialty">${escapeHtml(doc.specialty || 'General')}</div>
+            </div>
+            <span class="status-badge status-${doc.status}">${doc.status}</span>
+          </div>
+          <div class="card-details">
+            <div><span>Location:</span> ${escapeHtml(doc.location || 'N/A')}</div>
+            <div><span>Visit Time:</span> ${escapeHtml(doc.time || 'N/A')}</div>
+            <div><span>Product:</span> ${escapeHtml(doc.item || 'N/A')}</div>
+            ${doc.notes ? `<div><span>Notes:</span> ${escapeHtml(doc.notes)}</div>` : ''}
+          </div>
+          <div class="card-actions">
+            <button class="card-action-btn" onclick="editDoctor(${index})">Edit</button>
+            <button class="card-action-btn" style="color: #d32f2f;" onclick="deleteDoctor(${index})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openDoctorModal(index = -1) {
+      const modal = document.getElementById('docModal');
+      const form = document.getElementById('docForm');
+      document.getElementById('editIndex').value = index;
+
+      if (index >= 0) {
+        const doc = plannerData[currentDay][index];
+        document.getElementById('modalTitle').innerText = 'Edit Doctor Details';
+        document.getElementById('docName').value = doc.name;
+        document.getElementById('docSpecialty').value = doc.specialty;
+        document.getElementById('docLocation').value = doc.location;
+        document.getElementById('docTime').value = doc.time;
+        document.getElementById('docStatus').value = doc.status;
+        document.getElementById('docItem').value = doc.item;
+        document.getElementById('docNotes').value = doc.notes;
+      } else {
+        document.getElementById('modalTitle').innerText = `Add Doctor (${currentDay})`;
+        form.reset();
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeDoctorModal() {
+      document.getElementById('docModal').classList.remove('active');
+    }
+
+    function saveDoctor(e) {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('editIndex').value);
+      
+      const docObj = {
+        name: document.getElementById('docName').value,
+        specialty: document.getElementById('docSpecialty').value,
+        location: document.getElementById('docLocation').value,
+        time: document.getElementById('docTime').value,
+        status: document.getElementById('docStatus').value,
+        item: document.getElementById('docItem').value,
+        notes: document.getElementById('docNotes').value
+      };
+
+      if (index >= 0) {
+        plannerData[currentDay][index] = docObj;
+      } else {
+        plannerData[currentDay].push(docObj);
+      }
+
+      saveToStorage();
+      closeDoctorModal();
+      renderDoctors();
+    }
+
+    function deleteDoctor(index) {
+      if (confirm('Delete this visit from your plan?')) {
+        plannerData[currentDay].splice(index, 1);
+        saveToStorage();
+        renderDoctors();
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('medrep_planner', JSON.stringify(plannerData));
+    }
+
+    // Export formatted text summary
+    function openExportModal() {
+      let output = "WEEKLY MEDICAL REPRESENTATIVE VISIT PLAN\n====================================\n\n";
+
+      days.forEach(day => {
+        output += `📅 ${day.toUpperCase()}\n`;
+        const docs = plannerData[day];
+
+        if (!docs || docs.length === 0) {
+          output += "  • No scheduled visits.\n\n";
+        } else {
+          docs.forEach(doc => {
+            output += `  • ${doc.name} (${doc.specialty || 'General'})\n`;
+            output += `    - Location: ${doc.location || 'N/A'}\n`;
+            output += `    - Time: ${doc.time || 'N/A'}\n`;
+            output += `    - Status: ${doc.status}\n`;
+            output += `    - Item: ${doc.item || 'N/A'}\n`;
+            if (doc.notes) {
+              output += `    - Notes: ${doc.notes}\n`;
+            }
+          });
+          output += "\n";
+        }
+      });
+
+      document.getElementById('exportArea').value = output.trim();
+      document.getElementById('exportModal').classList.add('active');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.remove('active');
+    }
+
+    function copyExportText() {
+      const exportArea = document.getElementById('exportArea');
+      exportArea.select();
+      navigator.clipboard.writeText(exportArea.value).then(() => {
+        alert('Plan copied to clipboard!');
+      });
+    }
+
+    // Backup & Restore JSON functionality
+    function exportDataJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plannerData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `medrep_plan_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (typeof importedData === 'object') {
+            plannerData = importedData;
+            saveToStorage();
+            renderDoctors();
+            alert('Planner restored successfully!');
+          }
+        } catch (err) {
+          alert('Invalid file format. Please upload a valid plan backup JSON file.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Initialize application
+    init();
+  </script>
+</body>
+</html>
